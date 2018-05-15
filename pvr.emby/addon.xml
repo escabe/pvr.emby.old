@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon
+  id="pvr.emby"
+  version="0.1"
+  name="PVR Emby Client"
+  provider-name="EscAbe">
+  <requires>
+    <c-pluff version="0.1"/>
+    <import addon="xbmc.pvr" version="5.2.1"/>
+  </requires>
+  <extension
+    point="xbmc.pvrclient"
+    library_linux="pvr.emby.so.0.1"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_US">Emby PVR Client</summary>
+    <description lang="en_US">Emby PVR Client</description>
+    <disclaimer lang="en_US">No caching whatsoever, queries the Emby server for everything, always.</disclaimer>
+    <platform>linux</platform>
+  </extension>
+</addon>
