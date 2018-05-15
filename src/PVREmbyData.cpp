@@ -22,15 +22,21 @@
 #include "util/XMLUtils.h"
 #include "PVREmbyData.h"
 
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/filereadstream.h"
+
 using namespace std;
 using namespace ADDON;
+using namespace rapidjson;
 
 PVREmbyData::PVREmbyData(void)
 {
   m_iEpgStart = -1;
   m_strDefaultIcon =  "http://www.royalty-free.tv/news/wp-content/uploads/2011/06/cc-logo1.jpg";
   m_strDefaultMovie = "";
-
+  EmbyLogin();
   LoadDemoData();
 }
 
@@ -49,6 +55,53 @@ std::string PVREmbyData::GetSettingsFile() const
   else
     settingFile.append("/PVREmbyAddonSettings.xml");
   return settingFile;
+}
+
+bool PVREmbyData::EmbyLogin(void) {
+  // Read server from settings
+  char buffer[1024];
+  XBMC->GetSetting("server",buffer);
+  m_server = buffer;
+  
+  // Make the request
+  void* fEmby = XBMC->CURLCreate(m_server + "/Users/AuthenticateByName");
+  XBMC->CURLAddOption(fEmby, XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
+  XBMC->CURLAddOption(fEmby, XFILE::CURL_OPTION_HEADER,"Content-Type","application/json");
+  XBMC->CURLAddOption(fEmby, XFILE::CURL_OPTION_PROTOCOL,"postdata","eyJ1c2VybmFtZSI6Ik1hcnRpam4iLCJwdyI6IiJ9");  XBMC->CURLOpen(fEmby,0);
+  
+  // Read the full reply (closing the file)
+  std::string strContents;
+  GetFileContents(fEmby,strContents);
+
+    // Parse JSON data
+  StringStream s(strContents.c_str());
+  Document d;
+  d.ParseStream(s);
+
+  // Get the token and user id
+  m_token = d["AccessToken"].GetString();
+  m_userId = d["User"]["Id"].GetString();
+  XBMC->Log(LOG_DEBUG,"Token: %s, UserId: %s",m_token.c_str(),m_userId.c_str());
+
+}
+
+int PVREmbyData::GetFileContents(void* fileHandle, std::string &strContent)
+{
+  strContent.clear();
+  if (fileHandle)
+  {
+    char buffer[1024];
+    while (int bytesRead = XBMC->ReadFile(fileHandle, buffer, 1024))
+      strContent.append(buffer, bytesRead);
+    XBMC->CloseFile(fileHandle);
+  }
+
+  return strContent.length();
+}
+
+
+bool PVREmbyData::LoadChannels(void) {
+
 }
 
 bool PVREmbyData::LoadDemoData(void)

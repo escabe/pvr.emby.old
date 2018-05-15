@@ -119,6 +119,9 @@ public:
   virtual std::string GetSettingsFile() const;
 protected:
   virtual bool LoadDemoData(void);
+  virtual bool LoadChannels(void);
+  virtual bool EmbyLogin(void);
+  virtual int GetFileContents(void *fileHandle, std::string &strContent);
 private:
   std::vector<PVREmbyChannelGroup> m_groups;
   std::vector<PVREmbyChannel>      m_channels;
@@ -128,4 +131,7 @@ private:
   time_t                           m_iEpgStart;
   CStdString                       m_strDefaultIcon;
   CStdString                       m_strDefaultMovie;
+  CStdString                       m_token;
+  CStdString                       m_userId;
+  CStdString                       m_server;
 };
