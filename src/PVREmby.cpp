@@ -52,22 +52,40 @@ bool PVREmby::EmbyLogin(void) {
   XBMC->GetSetting("server",buffer);
   m_server = buffer;
   
-  std::string json;
+  // Form username/password JSON data to send to server
+  Document data;
+  data.SetObject();
+  XBMC->GetSetting("username",buffer);
+  data.AddMember("username",Value().SetString(buffer,data.GetAllocator()),data.GetAllocator());
+  XBMC->GetSetting("password",buffer);
+  data.AddMember("pw",Value().SetString(buffer,data.GetAllocator()),data.GetAllocator());
+  // Render to string
+  StringBuffer sbuffer;
+  Writer<StringBuffer> writer(sbuffer);
+  data.Accept(writer);
 
+  // Initialize CURL
   CURL *curl = curl_easy_init();
+  // Set URL
   curl_easy_setopt(curl, CURLOPT_URL, (m_server + "/Users/AuthenticateByName").c_str());
+  // Create and set headers
   struct curl_slist *list = NULL;
   list = curl_slist_append(list, "Authorization: MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
   list = curl_slist_append(list, "Content-Type: application/json");
-  curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcrp/0.1");
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{\"username\":\"Martijn\",\"pw\":\"\"}");
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+  // Configure user agent
+  curl_easy_setopt(curl, CURLOPT_USERAGENT, "KodiPVR");
+  // Set POST data
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, sbuffer.GetString());
+  // Configure function for receiving data
+  std::string json;
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_data);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json);
+  // Perform request
   CURLcode res = curl_easy_perform(curl);
   curl_easy_cleanup(curl);
 
-
+  // Parse JSON result
   Document d;
   d.Parse(json.c_str());
 
@@ -79,22 +97,26 @@ bool PVREmby::EmbyLogin(void) {
 }
 
 Document PVREmby::GetURL(CStdString url) {
-
-  std::string json;
-
+  // Initialize CURL
   CURL *curl = curl_easy_init();
+  // Set endpoint
   curl_easy_setopt(curl, CURLOPT_URL, (m_server + url).c_str());
+  // Set headers
   struct curl_slist *list = NULL;
   list = curl_slist_append(list, "Authorization: MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
   list = curl_slist_append(list, ("X-MediaBrowser-Token: " + m_token).c_str());
-  curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcrp/0.1");
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+  // Set user agent
+  curl_easy_setopt(curl, CURLOPT_USERAGENT, "KodiPVR");
+  // Data return functions
+  std::string json;
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_data);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json);
+  // Perform request
   CURLcode res = curl_easy_perform(curl);
+  // Clean-up
   curl_easy_cleanup(curl);
-
-
+  // Parse received JSON data
   Document d;
   d.Parse(json.c_str());
   return d;
@@ -115,19 +137,37 @@ int PVREmby::GetFileContents(void* fileHandle, std::string &strContent)
 
 int PVREmby::GetChannelsAmount(void)
 {
-  
+  // Query server
   Document data = GetURL("/LiveTV/Channels");
+  // Count number of channels
   return data["Items"].Capacity();
 }
 
 PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
+  // Query server
   Document data = GetURL("/LiveTV/Channels");
-
+  // Go through data
   Value& a = data["Items"];
   for (int i=0;i<a.Capacity();i++) {
     Value& channel = a[i];
     XBMC->Log(LOG_DEBUG,"Adding Channel %s",channel["Name"].GetString());      
-    
+
+    PVR_CHANNEL xbmcChannel;
+    memset(&xbmcChannel, 0, sizeof(PVR_CHANNEL));
+
+    xbmcChannel.iUniqueId         = atoi(channel["Number"].GetString());
+    xbmcChannel.bIsRadio          = false;
+    xbmcChannel.iChannelNumber    = atoi(channel["Number"].GetString());
+    xbmcChannel.iSubChannelNumber = 0;
+    strncpy(xbmcChannel.strChannelName, channel["Name"].GetString(), strlen(channel["Name"].GetString()));
+    CStdString streamUrl = m_server + "/Videos/" + channel["Id"].GetString() + "/stream?static=true";
+    strncpy(xbmcChannel.strStreamURL, streamUrl.c_str(), streamUrl.length());
+    xbmcChannel.iEncryptionSystem = 0;
+    CStdString strIconPath = m_server + "/Items/" + channel["Id"].GetString() + "/Images/Primary";
+    strncpy(xbmcChannel.strIconPath, strIconPath.c_str(), strIconPath.length());
+    xbmcChannel.bIsHidden         = false;
+
+    PVR->TransferChannelEntry(handle, &xbmcChannel);    
     
   }
   return PVR_ERROR_NO_ERROR;
