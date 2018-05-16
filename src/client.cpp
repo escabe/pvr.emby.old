@@ -21,7 +21,7 @@
 
 #include "client.h"
 #include "xbmc_pvr_dll.h"
-#include "PVREmbyData.h"
+#include "PVREmby.h"
 #include <p8-platform/util/util.h>
 
 using namespace std;
@@ -33,9 +33,9 @@ using namespace ADDON;
 
 bool           m_bCreated       = false;
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
-PVREmbyData   *m_data           = NULL;
+PVREmby       *m_Emby           = NULL;
 bool           m_bIsPlaying     = false;
-PVREmbyChannel m_currentChannel;
+
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -84,7 +84,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   ADDON_ReadSettings();
 
-  m_data = new PVREmbyData;
+  m_Emby = new PVREmby;
   m_CurStatus = ADDON_STATUS_OK;
   m_bCreated = true;
   return m_CurStatus;
@@ -97,7 +97,7 @@ ADDON_STATUS ADDON_GetStatus()
 
 void ADDON_Destroy()
 {
-  delete m_data;
+  delete m_Emby;
   m_bCreated = false;
   m_CurStatus = ADDON_STATUS_UNKNOWN;
 }
@@ -169,13 +169,13 @@ const char* GetMininumGUIAPIVersion(void)
 
 PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
-  pCapabilities->bSupportsEPG             = true;
+  pCapabilities->bSupportsEPG             = false;
   pCapabilities->bSupportsTV              = true;
-  pCapabilities->bSupportsRadio           = true;
-  pCapabilities->bSupportsChannelGroups   = true;
-  pCapabilities->bSupportsRecordings      = true;
-  pCapabilities->bSupportsRecordingsUndelete = true;
-  pCapabilities->bSupportsTimers          = true;
+  pCapabilities->bSupportsRadio           = false;
+  pCapabilities->bSupportsChannelGroups   = false;
+  pCapabilities->bSupportsRecordings      = false;
+  pCapabilities->bSupportsRecordingsUndelete = false;
+  pCapabilities->bSupportsTimers          = false;
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -212,40 +212,28 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
-  if (m_data)
-    return m_data->GetEPGForChannel(handle, channel, iStart, iEnd);
-
-  return PVR_ERROR_SERVER_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 int GetChannelsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelsAmount();
-
+  
+  if (m_Emby)
+    return m_Emby->GetChannelsAmount();
+  
   return -1;
 }
 
 PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannels(handle, bRadio);
+  if (m_Emby)
+    return m_Emby->GetChannels(handle,bRadio);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 bool OpenLiveStream(const PVR_CHANNEL &channel)
 {
-  if (m_data)
-  {
-    CloseLiveStream();
-
-    if (m_data->GetChannel(channel, m_currentChannel))
-    {
-      m_bIsPlaying = true;
-      return true;
-    }
-  }
 
   return false;
 }
@@ -262,6 +250,7 @@ bool SwitchChannel(const PVR_CHANNEL &channel)
   return OpenLiveStream(channel);
 }
 
+
 PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES* pProperties)
 {
   return PVR_ERROR_NOT_IMPLEMENTED;
@@ -269,26 +258,19 @@ PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES* pProperties)
 
 int GetChannelGroupsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelGroupsAmount();
+
 
   return -1;
 }
 
 PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannelGroups(handle, bRadio);
-
-  return PVR_ERROR_SERVER_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
-  if (m_data)
-    return m_data->GetChannelGroupMembers(handle, group);
-
-  return PVR_ERROR_SERVER_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
@@ -301,40 +283,26 @@ PVR_ERROR SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
 
 int GetRecordingsAmount(bool deleted)
 {
-  if (m_data)
-    return m_data->GetRecordingsAmount(deleted);
-
   return -1;
 }
 
 PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 {
-  if (m_data)
-    return m_data->GetRecordings(handle, deleted);
-
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 {
-  /* TODO: Implement this to get support for the timer features introduced with PVR API 1.9.7 */
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 int GetTimersAmount(void)
 {
-  if (m_data)
-    return m_data->GetTimersAmount();
-
   return -1;
 }
 
 PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
-  if (m_data)
-    return m_data->GetTimers(handle);
-
-  /* TODO: Change implementation to get support for the timer features introduced with PVR API 1.9.7 */
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
