@@ -169,7 +169,7 @@ const char* GetMininumGUIAPIVersion(void)
 
 PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
-  pCapabilities->bSupportsEPG             = false;
+  pCapabilities->bSupportsEPG             = true;
   pCapabilities->bSupportsTV              = true;
   pCapabilities->bSupportsRadio           = false;
   pCapabilities->bSupportsChannelGroups   = false;
@@ -212,6 +212,9 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
+  if (m_Emby)
+    return m_Emby->GetEPGForChannel(handle, channel, iStart, iEnd);
+  
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 

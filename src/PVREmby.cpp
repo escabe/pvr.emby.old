@@ -71,6 +71,7 @@ bool PVREmby::EmbyLogin(void) {
   CURL *curl = curl_easy_init();
   // Set URL
   curl_easy_setopt(curl, CURLOPT_URL, (m_server + "/Users/AuthenticateByName").c_str());
+
   // Create and set headers
   struct curl_slist *list = NULL;
   list = curl_slist_append(list, "Authorization: MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
@@ -172,6 +173,8 @@ PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
     return PVR_ERROR_SERVER_ERROR;
   }
 
+  m_numIdMap.clear();
+
   // Go through data
   Value& a = data["Items"];
   for (int i=0;i<a.Capacity();i++) {
@@ -193,9 +196,63 @@ PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
     strncpy(xbmcChannel.strIconPath, strIconPath.c_str(), strIconPath.length());
     xbmcChannel.bIsHidden         = false;
 
+    m_numIdMap[xbmcChannel.iUniqueId] = channel["Id"].GetString();
+
     PVR->TransferChannelEntry(handle, &xbmcChannel);    
     
   }
   return PVR_ERROR_NO_ERROR;
 }
 
+PVR_ERROR PVREmby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd) {
+  Document data;
+  CStdString id = m_numIdMap[channel.iUniqueId];
+  try {
+    data = GetURL("/LiveTV/Programs?ChannelIds=" + id);
+  } catch (const std::runtime_error& e) {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+
+  Value& a = data["Items"];
+  for (int i=0;i<a.Capacity();i++) {
+    Value& epgentry = a[i];
+    EPG_TAG tag;
+    memset(&tag, 0, sizeof(EPG_TAG));
+
+    tag.iUniqueBroadcastId = i;
+    tag.strTitle           = epgentry["Name"].GetString();
+    
+    int y,M,d,h,m;
+    float s;
+    sscanf(epgentry["StartDate"].GetString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+    tm time;
+    time.tm_year = y - 1900; // Year since 1900
+    time.tm_mon = M - 1;     // 0-11
+    time.tm_mday = d;        // 1-31
+    time.tm_hour = h;        // 0-23
+    time.tm_min = m;         // 0-59
+    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+
+    tag.startTime          = timegm(&time);
+
+    sscanf(epgentry["EndDate"].GetString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+    time.tm_year = y - 1900; // Year since 1900
+    time.tm_mon = M - 1;     // 0-11
+    time.tm_mday = d;        // 1-31
+    time.tm_hour = h;        // 0-23
+    time.tm_min = m;         // 0-59
+    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+
+    tag.endTime            = timegm(&time);
+    
+    tag.iFlags             = EPG_TAG_FLAG_UNDEFINED;
+
+    if (epgentry.HasMember("EpisodeTitle"))
+      tag.strEpisodeName = epgentry["EpisodeTitle"].GetString();
+
+    PVR->TransferEpgEntry(handle, &tag);
+  }
+
+  return PVR_ERROR_NO_ERROR;
+}

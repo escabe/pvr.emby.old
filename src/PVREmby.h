@@ -20,6 +20,8 @@
  *
  */
 
+#include <map>
+
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
@@ -27,9 +29,6 @@
 
 #include "p8-platform/util/StdString.h"
 #include "client.h"
-
-
-
 
 class PVREmby
 {
@@ -39,10 +38,11 @@ public:
   virtual rapidjson::Document GetURL(CStdString url);
   virtual int GetChannelsAmount(void);
   virtual PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-
+  virtual PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
 protected:
   virtual bool EmbyLogin(void);
 private:
+  std::map<unsigned int, CStdString> m_numIdMap;
   CStdString m_token;
   CStdString m_userId;
   CStdString m_server;
