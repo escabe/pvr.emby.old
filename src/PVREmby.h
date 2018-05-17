@@ -42,9 +42,8 @@ public:
 
 protected:
   virtual bool EmbyLogin(void);
-  virtual int GetFileContents(void *fileHandle, std::string &strContent);
 private:
-  CStdString                      m_token;
-  CStdString                       m_userId;
-  CStdString                       m_server;
+  CStdString m_token;
+  CStdString m_userId;
+  CStdString m_server;
 };

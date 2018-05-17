@@ -28,7 +28,7 @@ using namespace rapidjson;
 
 PVREmby::PVREmby(void)
 {
-  EmbyLogin();
+ 
 }
 
 PVREmby::~PVREmby(void)
@@ -47,6 +47,9 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, std::string *data)
 
 
 bool PVREmby::EmbyLogin(void) {
+  // Shortcut if already logged in
+  if (!(m_token.IsEmpty()))
+    return true;    
   // Read server from settings
   char buffer[1024];
   XBMC->GetSetting("server",buffer);
@@ -83,7 +86,16 @@ bool PVREmby::EmbyLogin(void) {
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json);
   // Perform request
   CURLcode res = curl_easy_perform(curl);
+  // Get error code
+  long http_code = 0;
+  curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+
   curl_easy_cleanup(curl);
+
+ if (http_code!=200) {
+    XBMC->Log(LOG_ERROR,"Unable to login to server: %s",(m_server).c_str());
+    return false;
+  }
 
   // Parse JSON result
   Document d;
@@ -93,10 +105,15 @@ bool PVREmby::EmbyLogin(void) {
   m_token = d["AccessToken"].GetString();
   m_userId = d["User"]["Id"].GetString();
   XBMC->Log(LOG_DEBUG,"Token: %s, UserId: %s",m_token.c_str(),m_userId.c_str());
-
+  
+  return true;
 }
 
 Document PVREmby::GetURL(CStdString url) {
+  if (!EmbyLogin()) {
+    XBMC->Log(LOG_ERROR,"Not performing request to %s as login failed.",(m_server + url).c_str());
+    throw std::runtime_error("error");
+  }
   // Initialize CURL
   CURL *curl = curl_easy_init();
   // Set endpoint
@@ -114,38 +131,47 @@ Document PVREmby::GetURL(CStdString url) {
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json);
   // Perform request
   CURLcode res = curl_easy_perform(curl);
+  // Get error code
+  long http_code = 0;
+  curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+
   // Clean-up
   curl_easy_cleanup(curl);
+  
+  if (http_code!=200) {
+    XBMC->Log(LOG_ERROR,"Unable to retrieve information from: %s",(m_server + url).c_str());
+    throw std::runtime_error("error");
+  }
+  
   // Parse received JSON data
   Document d;
   d.Parse(json.c_str());
   return d;
 }
 
-int PVREmby::GetFileContents(void* fileHandle, std::string &strContent)
-{
-  strContent.clear();
-  if (fileHandle)
-  {
-    char buffer[1024];
-    while (int bytesRead = XBMC->ReadFile(fileHandle, buffer, 1024))
-      strContent.append(buffer, bytesRead);
-    XBMC->CloseFile(fileHandle);
-  }
-  return strContent.length();
-}
-
 int PVREmby::GetChannelsAmount(void)
 {
+  Document data;
   // Query server
-  Document data = GetURL("/LiveTV/Channels");
+  try {
+    data = GetURL("/LiveTV/Channels");
+  } catch (const std::runtime_error& e) {
+    return -1;
+  }
+  
   // Count number of channels
   return data["Items"].Capacity();
 }
 
 PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
+  Document data;
   // Query server
-  Document data = GetURL("/LiveTV/Channels");
+  try {
+    data = GetURL("/LiveTV/Channels");
+  } catch (const std::runtime_error& e) {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
   // Go through data
   Value& a = data["Items"];
   for (int i=0;i<a.Capacity();i++) {
