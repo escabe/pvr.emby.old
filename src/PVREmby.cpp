@@ -189,8 +189,6 @@ PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
     xbmcChannel.iChannelNumber    = atoi(channel["Number"].GetString());
     xbmcChannel.iSubChannelNumber = 0;
     strncpy(xbmcChannel.strChannelName, channel["Name"].GetString(), strlen(channel["Name"].GetString()));
-    CStdString streamUrl = m_server + "/Videos/" + channel["Id"].GetString() + "/stream?static=true";
-    strncpy(xbmcChannel.strStreamURL, streamUrl.c_str(), streamUrl.length());
     xbmcChannel.iEncryptionSystem = 0;
     CStdString strIconPath = m_server + "/Items/" + channel["Id"].GetString() + "/Images/Primary";
     strncpy(xbmcChannel.strIconPath, strIconPath.c_str(), strIconPath.length());
@@ -199,16 +197,28 @@ PVR_ERROR PVREmby::GetChannels(ADDON_HANDLE handle, bool bRadio) {
     m_numIdMap[xbmcChannel.iUniqueId] = channel["Id"].GetString();
 
     PVR->TransferChannelEntry(handle, &xbmcChannel);    
-    
+ 
   }
   return PVR_ERROR_NO_ERROR;
 }
 
+
+CStdString PVREmby::GetStreamURL(const PVR_CHANNEL *channel) {
+  char id[33];
+  strncpy(id,channel->strIconPath+(strlen(channel->strIconPath)-47),32);
+  id[32] = '\0';
+  return m_server + "/Videos/" + CStdString(id) + "/stream?static=true";
+}
+
+
+
 PVR_ERROR PVREmby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd) {
   Document data;
-  CStdString id = m_numIdMap[channel.iUniqueId];
+  char id[33];
+  strncpy(id,channel.strIconPath+(strlen(channel.strIconPath)-47),32);
+  id[32] = '\0';
   try {
-    data = GetURL("/LiveTV/Programs?ChannelIds=" + id);
+    data = GetURL("/LiveTV/Programs?ChannelIds=" + CStdString(id));
   } catch (const std::runtime_error& e) {
     return PVR_ERROR_SERVER_ERROR;
   }

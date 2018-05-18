@@ -39,6 +39,7 @@ public:
   virtual int GetChannelsAmount(void);
   virtual PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
   virtual PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  virtual CStdString GetStreamURL(const PVR_CHANNEL *channel);
 protected:
   virtual bool EmbyLogin(void);
 private:

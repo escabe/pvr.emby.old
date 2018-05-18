@@ -1,5 +1,6 @@
 # build artifacts
 build/
+build19/
 debian/changelog
 debian/files
 debian/kodi-pvr-demo-dbg.debhelper.log

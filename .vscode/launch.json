@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/escabe/devel/KodiPVR/xbmc/kodi.bin",
+            "program": "/home/escabe/devel/KodiPVR/kodi/kodi-build/kodi-x11",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

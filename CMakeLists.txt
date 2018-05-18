@@ -25,6 +25,10 @@ set(DEPLIBS ${kodiplatform_LIBRARIES}
 set(PVREMBY_SOURCES src/client.cpp
                     src/PVREmby.cpp)
 
+
+set(PVREMBY_HEADERS src/client.h
+                    src/PVREmby.h)
+
 build_addon(pvr.emby PVREMBY DEPLIBS)
 
 include(CPack)

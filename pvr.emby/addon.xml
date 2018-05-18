@@ -5,9 +5,8 @@
   name="PVR Emby Client"
   provider-name="EscAbe">
   <requires>
-    <c-pluff version="0.1"/>
-    <import addon="xbmc.pvr" version="5.2.1"/>
-  </requires>
+<import addon="kodi.binary.global.main" version="1.0.12"/>
+<import addon="kodi.binary.instance.pvr" version="5.8.0"/></requires>
   <extension
     point="xbmc.pvrclient"
     library_linux="pvr.emby.so.0.1"/>
