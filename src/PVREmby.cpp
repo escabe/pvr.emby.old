@@ -20,7 +20,7 @@
  */
 
 #include "PVREmby.h"
-#include <curl/curl.h>
+#include "curl/curl.h"
 
 using namespace std;
 using namespace ADDON;
@@ -255,13 +255,15 @@ PVR_ERROR PVREmby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &chan
     time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
 
     tag.endTime            = timegm(&time);
-    
+
     tag.iFlags             = EPG_TAG_FLAG_UNDEFINED;
 
     if (epgentry.HasMember("EpisodeTitle"))
       tag.strEpisodeName = epgentry["EpisodeTitle"].GetString();
 
-    PVR->TransferEpgEntry(handle, &tag);
+
+    if (iEnd < tag.startTime < iStart)
+      PVR->TransferEpgEntry(handle, &tag);
   }
 
   return PVR_ERROR_NO_ERROR;
